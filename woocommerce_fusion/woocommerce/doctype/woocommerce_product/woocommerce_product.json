@@ -147,8 +147,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "draft\npending\nprivate\npublish\ntrash",
-   "read_only": 1
+   "options": "draft\npending\nprivate\npublish\ntrash"
   },
   {
    "default": "0",

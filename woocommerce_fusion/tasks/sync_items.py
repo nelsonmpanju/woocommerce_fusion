@@ -8,6 +8,7 @@ from erpnext.stock.doctype.item.item import Item
 from frappe import ValidationError, _, _dict
 from frappe.query_builder import Criterion
 from frappe.utils import get_datetime, now
+import frappe.utils
 from jsonpath_ng.ext import parse
 
 from woocommerce_fusion.exceptions import SyncDisabledError
@@ -300,6 +301,16 @@ class SynchroniseItem(SynchroniseWooCommerce):
 		product_fields_changed, wc_product = self.set_product_fields(wc_product, item)
 		if product_fields_changed:
 			wc_product_dirty = True
+		
+		if item.item.item_group:
+			wc_product.categories = json.dumps([{"name": item.item.item_group}])
+			wc_product_dirty = True
+		
+		wc_server = frappe.get_cached_doc("wooCommerce Server", wc_product.woocommerce_server)
+		if wc_server.enable_image_sync and item.item.image:
+			image_url = frappe.utils.get_url(item.item.image)
+			wc_product.images = json.dumps([{"src": image_url}])
+			wc_product_dirty = True
 
 		if wc_product_dirty:
 			wc_product.save()
@@ -309,7 +320,7 @@ class SynchroniseItem(SynchroniseWooCommerce):
 
 	def create_woocommerce_product(self, item: ERPNextItemToSync) -> None:
 		"""
-		Create the WooCommerce Product with fields from it's corresponding ERPNext Item
+		Create the WooCommerce Product with fields from its corresponding ERPNext Item
 		"""
 		if (
 			item.item_woocommerce_server.woocommerce_server
@@ -321,12 +332,10 @@ class SynchroniseItem(SynchroniseWooCommerce):
 
 			wc_product.type = "simple"
 
-			# Handle variants
+			# Handle variants (existing code unchanged)
 			if item.item.has_variants:
 				wc_product.type = "variable"
 				wc_product_attributes = []
-
-				# Handle attributes
 				for row in item.item.attributes:
 					item_attribute = frappe.get_doc("Item Attribute", row.attribute)
 					wc_product_attributes.append(
@@ -338,17 +347,13 @@ class SynchroniseItem(SynchroniseWooCommerce):
 							"options": [option.attribute_value for option in item_attribute.item_attribute_values],
 						}
 					)
-
 				wc_product.attributes = json.dumps(wc_product_attributes)
 
 			if item.item.variant_of:
-				# Check if parent exists
 				parent_item = frappe.get_doc("Item", item.item.variant_of)
 				parent_item, parent_wc_product = run_item_sync(item_code=parent_item.item_code)
 				wc_product.parent_id = parent_wc_product.woocommerce_id
 				wc_product.type = "variation"
-
-				# Handle attributes
 				wc_product_attributes = [
 					{
 						"name": row.attribute,
@@ -357,7 +362,6 @@ class SynchroniseItem(SynchroniseWooCommerce):
 					}
 					for row in item.item.attributes
 				]
-
 				wc_product.attributes = json.dumps(wc_product_attributes)
 
 			# Set properties
@@ -366,6 +370,15 @@ class SynchroniseItem(SynchroniseWooCommerce):
 			wc_product.regular_price = get_item_price_rate(item) or "0"
 
 			self.set_product_fields(wc_product, item)
+
+			if item.item.item_group:
+				wc_product.categories = json.dumps([{"name": item.item.item_group}])
+
+			# Add image sync logic
+			wc_server = frappe.get_cached_doc("WooCommerce Server", wc_product.woocommerce_server)
+			if wc_server.enable_image_sync and item.item.image:
+				image_url = frappe.utils.get_url(item.item.image)
+				wc_product.images = json.dumps([{"src": image_url}])
 
 			wc_product.insert()
 			self.woocommerce_product = wc_product
