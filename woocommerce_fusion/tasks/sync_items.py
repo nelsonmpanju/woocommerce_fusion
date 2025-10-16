@@ -242,7 +242,7 @@ class SynchroniseItem(SynchroniseWooCommerce):
 		if self.item and not self.woocommerce_product:
 			# create missing product in WooCommerce
 			self.create_woocommerce_product(self.item)
-		elif self.woocommerce_product and not self.item:
+		#elif self.woocommerce_product and not self.item:
 			# create missing item in ERPNext
 			# commenting as we dont need this direction of sync
 			#self.create_item(self.woocommerce_product)
