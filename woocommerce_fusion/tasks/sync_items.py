@@ -307,7 +307,7 @@ class SynchroniseItem(SynchroniseWooCommerce):
 			wc_product.categories = json.dumps([{"name": item.item.item_group}])
 			wc_product_dirty = True
 		
-		wc_server = frappe.get_cached_doc("wooCommerce Server", wc_product.woocommerce_server)
+		wc_server = frappe.get_cached_doc("WooCommerce Server", wc_product.woocommerce_server)
 		if wc_server.enable_image_sync and item.item.image:
 			image_url = frappe.utils.get_url(item.item.image)
 			wc_product.images = json.dumps([{"src": image_url}])
